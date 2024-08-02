@@ -80,7 +80,8 @@ def initialRequest():
     # print(content)
     # check that the request body is valid
     if ('destination' not in content or 'num-users' not in content or
-            'num-days' not in content or 'preferences' not in content):
+            'num-days' not in content or 'preferences' not in content or 
+            'budget' not in content):
         return (ERROR_MESSAGE_400, 400)
 
     # extract variables from the request body content
@@ -88,6 +89,8 @@ def initialRequest():
     travelers_num = content['num-users']
     days_num = content['num-days']
     travel_preferences = content['preferences']
+    budget = content['budget']
+
 
     # create a session variable that stores all message logs
     # the message log is an array of 'message' objects
@@ -97,7 +100,8 @@ def initialRequest():
     try:
         p = prompt.Prompt()
         session['messages'] = p.initialPlanATrip(destination, travelers_num,
-                                                 days_num, travel_preferences)
+                                                 days_num, travel_preferences,
+                                                 budget)
         completion = p.prompt(promptType.PromptType.ChatCompletions,
                               session['messages'])
         print(completion)
@@ -131,7 +135,7 @@ def initialRequest():
 
     session['messages'].append(new_message_object)
 
-    print(completion)
+    # print(completion)
 
     return ({"gpt-message": completion.choices[0].message.content}, 200)
 
@@ -154,7 +158,7 @@ def initialRequest():
 @app.route('/v1/prompt/itinerary', methods=['POST'])
 def chatPrompt():
 
-    print(request.get_data())
+    # print(request.get_data())
 
     # get json body from POST request
     content = request.get_json()
@@ -212,6 +216,7 @@ def weatherPrompt():
         return (ERROR_MESSAGE_400, 400)
 
     content['messages'] = None
+    completion = None
 
     try:
         p = prompt.Prompt()
@@ -235,7 +240,7 @@ def weatherPrompt():
             "messages": content['messages'],
         }
 
-    print(json.loads(completion.choices[0].message.content))
+    # print(json.loads(completion.choices[0].message.content))
 
     # manually add GPT's reply message to message log
     new_message_object = {
@@ -247,13 +252,15 @@ def weatherPrompt():
                 }
             ]
         }
+
     content['messages'].append(new_message_object)
 
-    return {
-        "svc": "prompt-svc",
-        "messages": content['messages'],
-    }
+    # return {
+    #     "svc": "prompt-svc",
+    #     "messages": content['messages'],
+    # }
 
+    return ({"weather-update": completion.choices[0].message.content}, 200)
 
 if __name__ == "__main__":
     app.run(host=HOST, port=PORT, debug=True)

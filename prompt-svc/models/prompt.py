@@ -14,12 +14,23 @@ PROMPT_ITINERARY = """You are a professional vacation planner helping users
                     detailed itinerary of each day, begin from day 1 to the
                     last day."""
 
+
+ITINERARY_JSON = {
+    "time": "string",
+    "location": "string",
+    "activity": "string",
+    "average duration": "number",
+    "cost": "number"
+}
+
+
 PROMPT_WEATHER = """You are a weather service."""
 
 WEATHER_JSON = {
     "time": "string",
     "temperature": "number",
     "condition": "string",
+    "FahrenheitorCelsius": "string",
     "chance_of_rain": "number"
 }
 
@@ -101,26 +112,30 @@ class Prompt():
 
     # Helper method for intial trip planning message construction
     def initialPlanATrip(self, destination, travelers_num, days_num,
-                         travel_preferences):
+                         travel_preferences, budget):
 
         userText = self.planATripMessage(destination, travelers_num,
-                                         days_num, travel_preferences)
+                                         days_num, travel_preferences, budget)
 
         return self.messageConstructor(cleanString(PROMPT_ITINERARY),
                                        userText)
 
     # Constructs the initial plan a trip message
     def planATripMessage(self, destination, travelers_num, days_num,
-                         travel_preferences):
+                         travel_preferences, budget):
 
         message = f"""Plan me a {days_num} days trip to {destination}.
                 This is for a party of {travelers_num} adults aging
                 from 35-38. We are interested in visiting shopping
                 area, enjoying local food, with a one or two night
-                life. We will strictly stay in Tokyo. Budget should
-                be $1500 per person without airfare, but include
-                ehotels, meals and other xpenses. We will be
-                leaving from New York, USA. {travel_preferences}"""
+                life. We will strictly stay in {destination}. Budget should
+                be {budget} per person without airfare, but include
+                ehotels, meals and other expenses. 
+                Use the following json format with this schema: {ITINERARY_JSON} 
+                where time is based on 12 hour clock, cost is a dollar amount, and
+                average duration is in hours. It will be housed within this 
+                structure " "Day 1": [] "
+                We will be leaving from New York, USA.{travel_preferences}"""
 
         return cleanString(message)  # removes whitespace from indendation
 
@@ -128,8 +143,14 @@ class Prompt():
     def getHourlyForcast(self, location, periods=24):
 
         forcastMessage = f"""give me an hourly forcast for weather in
-                      {location} for the next {periods} hours in
-                      json format with this schema: {WEATHER_JSON}"""
+                      {location} for the next 24 hours in
+                      json format with this schema: {WEATHER_JSON}
+                      using a 12 hour clock. The WEATHER_JSON formatted output 
+                      will be housed within this structure "forecast":[]. 
+                      Weather conditions will be identified as "Clear Night",
+                     "Rainy Night", "Cloudy Night", "Sunny", "Partly Cloudy",
+                       "Rainy", "Stormy", "Cloudy", or "Snowy" 
+                       """
 
         return self.messageConstructor(cleanString(PROMPT_WEATHER),
                                        cleanString(forcastMessage))
