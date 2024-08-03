@@ -1,0 +1,6 @@
+venv/
+.ENV
+__pycache__/
+openai-env/
+.ENV
+flask_session/
