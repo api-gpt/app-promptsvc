@@ -12,7 +12,8 @@ import json
 # import io
 
 # from pytest import Session
-from models import promptType, prompt
+from service.promptType import promptType
+from service.prompt import prompt
 
 # Load ENV variables
 load_dotenv(find_dotenv(".env"))
