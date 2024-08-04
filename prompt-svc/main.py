@@ -22,8 +22,6 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Set up Flask app
 app = Flask(__name__)
-HOST = os.getenv('PROMPT_SVC_HOST')
-PORT = os.getenv('PROMPT_SVC_PORT')
 
 # Load configurations from config.py file
 # app.config.from_object('config.DevelopmentConfig')
@@ -263,7 +261,7 @@ def weatherPrompt():
     return ({"weather-update": completion.choices[0].message.content}, 200)
 
 if __name__ == "__main__":
-    app.run(host=HOST, port=PORT, debug=True)
+    app.run()
 
 # Resources used:
 #   - https://medium.com/@abed63/flask-application-with-openai-
