@@ -1,0 +1,1 @@
+web: gunicorn prompt-svc.main:app
