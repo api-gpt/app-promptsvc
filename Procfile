@@ -1,1 +1,1 @@
-web: gunicorn prompt-svc.main:app
+web: gunicorn service.main:app
