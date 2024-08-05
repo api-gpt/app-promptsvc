@@ -130,10 +130,11 @@ class Prompt():
                 area, enjoying local food, with a one or two night
                 life. We will strictly stay in {destination}. Budget should
                 be {budget} per person without airfare, but include
-                ehotels, meals and other expenses. 
-                Use the following json format with this schema: {ITINERARY_JSON} 
-                where time is based on 12 hour clock, cost is a dollar amount, and
-                average duration is in hours. It will be housed within this 
+                ehotels, meals and other expenses.
+                Use the following json format with this schema:
+                {ITINERARY_JSON}
+                where time is based on 12 hour clock, cost is a dollar amount,
+                and average duration is in hours. It will be housed within this
                 structure " "Day 1": [] "
                 We will be leaving from New York, USA.{travel_preferences}"""
 
@@ -145,15 +146,30 @@ class Prompt():
         forcastMessage = f"""give me an hourly forcast for weather in
                       {location} for the next 24 hours in
                       json format with this schema: {WEATHER_JSON}
-                      using a 12 hour clock. The WEATHER_JSON formatted output 
-                      will be housed within this structure "forecast":[]. 
+                      using a 12 hour clock. The WEATHER_JSON formatted output
+                      will be housed within this structure "forecast":[].
                       Weather conditions will be identified as "Clear Night",
                      "Rainy Night", "Cloudy Night", "Sunny", "Partly Cloudy",
-                       "Rainy", "Stormy", "Cloudy", or "Snowy" 
+                       "Rainy", "Stormy", "Cloudy", or "Snowy"
                        """
 
         return self.messageConstructor(cleanString(PROMPT_WEATHER),
                                        cleanString(forcastMessage))
+
+    def getLocalInfo(self, currenLocation, destination, time, date,
+                     resterauntConditions):
+
+        # Create message to get local info for event
+        # Weather, resteraunts, and travel options
+
+        localInfoMessage = f"""Give me the weather for {destination} at
+                        {time} on {date}. Give me travel options from
+                        {currenLocation} to {destination}. Also, give me
+                        good resteraunts near {destination}.
+                        """
+
+        return self.messageConstructor(cleanString(PROMPT_ITINERARY),
+                                       cleanString(localInfoMessage))
 
     # Helper method to construct messages
     def messageConstructor(self, systemText, userText):
