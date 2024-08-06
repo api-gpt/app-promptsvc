@@ -227,15 +227,13 @@ def localInfo():
 
     # print(content)
     # check that the request body is valid
-    if ('currentLocation' not in content or
-            'destination' not in content or
+    if ('destination' not in content or
             'time' not in content or
             'date' not in content or
             'resterauntConditions' not in content):
         return (ERROR_MESSAGE_400, 400)
 
     # extract variables from the request body content
-    currentLocation = content['currentLocation']
     destination = content['destination']
     time = content['time']
     date = content['date']
@@ -244,8 +242,8 @@ def localInfo():
     try:
         p = prompt.Prompt()
         # Create prompt message for local info
-        content['messages'] = p.getLocalInfo(currentLocation, destination,
-                                             time, date, resterauntConditions)
+        content['messages'] = p.getLocalInfo(destination, time,
+                                             date, resterauntConditions)
         completion = p.prompt(promptType.PromptType.ChatCompletions,
                               content['messages'])
 

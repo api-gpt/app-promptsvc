@@ -20,7 +20,11 @@ ITINERARY_JSON = {
     "location": "string",
     "activity": "string",
     "average duration": "number",
-    "cost": "number"
+    "cost": "number",
+    "travel methods": "string",
+    "nearby resteraunts": "string",
+    "tips": "string",
+    "nearby activity": "string"
 }
 
 
@@ -136,12 +140,12 @@ class Prompt():
                 where time is based on 12 hour clock, cost is a dollar amount,
                 and average duration is in hours. It will be housed within this
                 structure " "Day 1": [] "
-                We will be leaving from New York, USA.{travel_preferences}"""
+                We will be leaving from New York, USA. {travel_preferences}"""
 
         return cleanString(message)  # removes whitespace from indendation
 
     # Gets hourly forcast for the next day at the given location
-    def getHourlyForcast(self, location, periods=24):
+    def getHourlyForcast(self, location):
 
         forcastMessage = f"""give me an hourly forcast for weather in
                       {location} for the next 24 hours in
@@ -156,16 +160,17 @@ class Prompt():
         return self.messageConstructor(cleanString(PROMPT_WEATHER),
                                        cleanString(forcastMessage))
 
-    def getLocalInfo(self, currenLocation, destination, time, date,
+    def getLocalInfo(self, destination, time, date,
                      resterauntConditions):
 
         # Create message to get local info for event
         # Weather, resteraunts, and travel options
 
         localInfoMessage = f"""Give me the weather for {destination} at
-                        {time} on {date}. Give me travel options from
-                        {currenLocation} to {destination}. Also, give me
-                        good resteraunts near {destination}.
+                        {time} on {date}. Give me travel options to
+                        {destination}. Give me good resteraunts near
+                        {destination}. Also, give me alternative things
+                        to do around this area. {resterauntConditions}
                         """
 
         return self.messageConstructor(cleanString(PROMPT_ITINERARY),
