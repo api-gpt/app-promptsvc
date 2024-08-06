@@ -295,7 +295,7 @@ def weatherPrompt():
 
     try:
         p = prompt.Prompt()
-        content['messages'] = p.getHourlyForcast(content['location'], 24)
+        content['messages'] = p.getHourlyForcast(content['location'])
         completion = p.prompt(promptType.PromptType.ChatCompletions,
                               content['messages'])
 
