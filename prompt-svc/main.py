@@ -252,6 +252,9 @@ def weatherPrompt():
                 }
             ]
         }
+    
+    print('weather update')
+    print(content['messages'])
 
     content['messages'].append(new_message_object)
 
@@ -261,6 +264,49 @@ def weatherPrompt():
     # }
 
     return ({"weather-update": completion.choices[0].message.content}, 200)
+
+
+
+@app.route('/v1/prompt/trip-planning-chat', methods=['POST'])
+def chatTripPlanningPrompt():
+
+    print(request.get_data())
+
+    # get json body from POST request
+    content = request.get_json()
+    print(content)
+
+    # check that the request body is valid
+    if ('message' not in content):
+        return (ERROR_MESSAGE_400, 400)
+
+    try:
+        p = prompt.Prompt()
+        user_message = {
+            "role": "user",
+            "content": content['message']
+        }
+        messages = [user_message]
+        completion = p.prompt(promptType.PromptType.ChatCompletions, messages)
+
+    except TypeError:
+        return {
+            "svc": "prompt-svc",
+            "error": "Invalid type: please use 1) chat,\
+                2) embedded, or 3) image",
+            "messages": content['message'],
+        }
+
+    # check that the request body is valid
+    if ('error' in completion):
+        return {
+            "svc": "prompt-svc",
+            "error": completion['error'],
+            "messages": content['message'],
+        }
+
+    return ({"messages": completion.choices[0].message.content}, 200)
+
 
 if __name__ == "__main__":
     app.run(host=HOST, port=PORT, debug=True)
