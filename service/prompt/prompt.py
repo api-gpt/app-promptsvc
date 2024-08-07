@@ -1,8 +1,8 @@
 # CS467 Online Capstone: GPT API Challenge
 # Kongkom Hiranpradit, Connor Flattum, Nathan Swaim, Noah Zajicek
 
-from .promptType import PromptType
-from .client import Client
+from service.promptType.promptType import PromptType
+from service.client.client import Client
 
 # The initial prompt context message for chatGPT to know how to answer
 PROMPT_ITINERARY = """You are a professional vacation planner helping users

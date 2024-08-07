@@ -12,7 +12,8 @@ import json
 # import io
 
 # from pytest import Session
-from models import promptType, prompt
+from service.promptType import promptType
+from service.prompt import prompt
 
 # Load ENV variables
 load_dotenv(find_dotenv(".env"))
@@ -22,8 +23,6 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Set up Flask app
 app = Flask(__name__)
-HOST = os.getenv('PROMPT_SVC_HOST')
-PORT = os.getenv('PROMPT_SVC_PORT')
 
 # Load configurations from config.py file
 # app.config.from_object('config.DevelopmentConfig')
@@ -309,7 +308,7 @@ def chatTripPlanningPrompt():
 
 
 if __name__ == "__main__":
-    app.run(host=HOST, port=PORT, debug=True)
+    app.run()
 
 # Resources used:
 #   - https://medium.com/@abed63/flask-application-with-openai-
