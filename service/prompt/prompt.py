@@ -73,6 +73,7 @@ class Prompt():
     def promptChatCompletions(self, messages):
 
         try:
+            print(messages)
             # Make call to chat GPT API
             completion = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -154,6 +155,15 @@ class Prompt():
 
         return self.messageConstructor(cleanString(PROMPT_WEATHER),
                                        cleanString(forcastMessage))
+    
+
+    # Constructs the initial plan a trip message
+    def respondToTripChat(self, travel_preferences):
+
+        message = f"""Give a response to a customer based on their chat response as they are planning their travel itinerary. 
+        Here is their response {travel_preferences}"""
+
+        return cleanString(message)  # removes whitespace from indendation
 
     # Helper method to construct messages
     def messageConstructor(self, systemText, userText):
