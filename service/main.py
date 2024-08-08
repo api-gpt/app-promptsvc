@@ -1,7 +1,7 @@
 # CS467 Online Capstone: GPT API Challenge
 # Kongkom Hiranpradit, Connor Flattum, Nathan Swaim, Noah Zajicek
 
-from flask import Flask, request, session
+from flask import Flask, request
 from flask_session import Session
 from openai import OpenAI
 from dotenv import load_dotenv, find_dotenv
@@ -14,6 +14,7 @@ import json
 # from pytest import Session
 from promptType import promptType
 from prompt import prompt
+from postgres.postgresdb import PostgresDB
 
 # Load ENV variables
 load_dotenv(find_dotenv(".env"))
@@ -36,6 +37,13 @@ ERROR_MESSAGE_400 = {
     "Error": "The request body is invalid"
 }
 
+# constants to define messages data in Postgres's messages table
+SYSTEMPROMPT = "SYSTEMPROMPT"   # System Prompt first sent to GPT
+USERPROMPT = "USERPROMPT"       # User Prompt first sent to GPT
+USERCHAT = "USERCHAT"           # any chat from user after the initial prompts
+GPTCHAT = "GPTCHAT"             # any reply from GPT other than Itinerary
+ITINERARY = "ITINERARY"         # reply from GPT that is an Itinerary
+
 # Message log for this session, stores all messages between GPT and user
 # an array of 'message' objects
 # 'message' objects is a dictionary of "role" and "content"
@@ -55,22 +63,22 @@ def index():
         "msg": "prompt service is up and running!"
     }
 
+
 ###########################################################
 #
-#  Route to use prompts with chatGPT API
+#  1. Initial itenerary request. Routed from UI's "Get Itinerary" button
 #
 #  Receives:
-#   - history:  a history of the conversation
-#   - text:     the text of the question to ask
+#   - POST JSON content from form:
+#       {destination, num-users, num-days, preferences, budget}
+#   - Create a new trip in database
+#   - Stores system prompt, user prompt and GPT response in database
 #
 #  Returns:
-#   - history:  a history of the conversation
-#   - text:     the text of the question to ask
-#   - answer:   answer to the question prompted
+#   - JSON: {"gpt-message": GPT's response in Itinerary format [library],
+#            "trip_id": Database's trip ID for future references [int]}
 #
 ###########################################################
-
-
 @app.route('/v1/prompt/initial-trip-planning-req', methods=['POST'])
 def initialRequest():
 
@@ -90,26 +98,27 @@ def initialRequest():
     travel_preferences = content['preferences']
     budget = content['budget']
 
-    # create a session variable that stores all message logs
-    # the message log is an array of 'message' objects
+    # messages is an array of 'message' objects
     # a 'message' objects is a dictionary of "role" and "content"
     completion = None
-    session['messages'] = None
+    messages = None
     try:
+        print("Initial req: constructing system message and sending to GPT")
         p = prompt.Prompt()
-        session['messages'] = p.initialPlanATrip(destination, travelers_num,
-                                                 days_num, travel_preferences,
-                                                 budget)
+        messages = p.initialPlanATrip(destination, travelers_num,
+                                      days_num, travel_preferences,
+                                      budget)
         completion = p.prompt(promptType.PromptType.ChatCompletions,
-                              session['messages'])
-        print(completion)
+                              messages)
+        print("Initial req: succesfully recieved completion from GPT")
+        # print(completion)
 
     except TypeError:
         return {
             "svc": "prompt-svc",
             "msg": "Invalid type: please use 1) chat,\
                 2) embedded, or 3) image",
-            "messages": session['messages'],
+            "messages": messages,
         }
 
     # check that the request body is valid
@@ -117,30 +126,84 @@ def initialRequest():
         return {
             "svc": "prompt-svc",
             "error": completion['error'],
-            "messages": session['messages'],
+            "messages": messages,
         }
 
-    # manually add GPT's reply message to message log
-    new_message_object = {
-        "role": completion.choices[0].message.role,
-        "content": [
-            {
-                "type": "text",
-                "text": completion.choices[0].message.content
-            }
-        ]
-    }
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
 
-    session['messages'].append(new_message_object)
+    # create a new trip on the db's 'trips' table, return auto-gen trip_id
+    trip_id = postgressconn.create_trip_to_db(
+                                destination=destination,
+                                days_num=days_num,
+                                travelers_num=travelers_num,
+                                budget=budget,
+                                travel_preferences=travel_preferences)
 
-    # print(completion)
+    # create a new system prompt on db's 'messages' table
+    postgressconn.create_message_to_db(trip_id=trip_id,
+                                       role=messages[0]['role'],
+                                       content_type=messages[0]['content'][0]['type'],
+                                       content_text=messages[0]['content'][0]['text'],
+                                       message_category=SYSTEMPROMPT)
 
-    return ({"gpt-message": completion.choices[0].message.content}, 200)
+    # create a new user prompt on db's 'messages' table
+    postgressconn.create_message_to_db(trip_id=trip_id,
+                                       role=messages[1]['role'],
+                                       content_type=messages[1]['content'][0]['type'],
+                                       content_text=messages[1]['content'][0]['text'],
+                                       message_category=USERPROMPT)
+
+    # create a new GPT's reply message to 'messages' table
+    postgressconn.create_message_to_db(trip_id=trip_id,
+                                       role=completion.choices[0].message.role,
+                                       content_type="text",
+                                       content_text=completion.choices[0].message.content,
+                                       message_category=ITINERARY)
+
+    # close postgres DB connection
+    postgressconn.close_db_connection()
+
+    return ({"gpt-message": completion.choices[0].message.content,
+             "trip_id": trip_id}, 200)
 
 
 ###########################################################
 #
-#  Route to use prompts with chatGPT API
+#  2. Get trip from trip_id. Can access from URL
+#
+#  Receives:
+#   - URL variable: trip_id
+#   - Search for the most recent updated itinerary
+#
+#  Returns:
+#   - JSON: {"gpt-message": most recent updated itinerary [library],
+#            "trip_id": Database's trip ID for future references [int]}
+#
+###########################################################
+@app.route('/v1/prompt/get-trip/<int:trip_id>', methods=['GET'])
+def getTrip(trip_id):
+
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
+
+    trip = postgressconn.get_trip(trip_id)
+
+    recent_itinerary = postgressconn.get_recent_itinerary(trip_id)
+
+    # close postgres DB connection
+    postgressconn.close_db_connection()
+
+    return ({"gpt-message": recent_itinerary,
+             "trip_id": trip_id,
+             "destination": trip['destination']}, 200)
+
+
+###########################################################
+#
+#  3. Route to use prompts with chatGPT API
 #
 #  Receives:
 #   - history:  a history of the conversation
@@ -205,7 +268,7 @@ def chatPrompt():
 
 ###########################################################
 #
-#  Route to use prompts with chatGPT API
+#  4. Route to use prompts with chatGPT API
 #
 #  Receives:
 #   - history:  a history of the conversation
@@ -280,6 +343,16 @@ def localInfo():
     }
 
 
+###########################################################
+#
+#  5. Weather Prompt
+#
+#  Receives:
+#
+#  Returns:
+#
+#
+###########################################################
 @app.route('/v1/prompt/weather', methods=['POST'])
 def weatherPrompt():
     # get json body from POST request
@@ -318,16 +391,6 @@ def weatherPrompt():
 
     # manually add GPT's reply message to message log
     new_message_object = {
-<<<<<<< HEAD:prompt-svc/main.py
-        "role": completion.choices[0].message.role,
-        "content": [
-            {
-                "type": "text",
-                "json": json.loads(completion.choices[0].message.content)
-            }
-        ]
-    }
-=======
             "role": completion.choices[0].message.role,
             "content": [
                 {
@@ -336,10 +399,9 @@ def weatherPrompt():
                 }
             ]
         }
-    
+
     print('weather update')
-    print(content['messages'])
->>>>>>> main:service/main.py
+    # print(content['messages'])
 
     content['messages'].append(new_message_object)
 
@@ -351,9 +413,21 @@ def weatherPrompt():
     return ({"weather-update": completion.choices[0].message.content}, 200)
 
 
-<<<<<<< HEAD:prompt-svc/main.py
-=======
-
+###########################################################
+#
+#  6. User chat with GPT, from UI's chat-box "Send"
+#   This doesn't update the itinerary, just basic chatting.
+#
+#  Receives:
+#   - POST JSON content from form:
+#       {trip_id, message}
+#   - Looks up chat history of trip by trip_id
+#   - Stores new user prompt and GPT response in database
+#
+#  Returns:
+#   - JSON: {"messages": GPT's response in normal format [string]}
+#
+###########################################################
 @app.route('/v1/prompt/trip-planning-chat', methods=['POST'])
 def chatTripPlanningPrompt():
 
@@ -361,19 +435,33 @@ def chatTripPlanningPrompt():
 
     # get json body from POST request
     content = request.get_json()
-    print(content)
+    trip_id = content['trip_id']
+    user_chat_message = content['message']
 
     # check that the request body is valid
-    if ('message' not in content):
+    if ('message' not in content or 'trip_id' not in content):
         return (ERROR_MESSAGE_400, 400)
+
+    # read chat history from database using trip_id
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
+
+    # read all messages with trip_id from 'message' table in database
+    # returns an array of message objects
+    messages = postgressconn.get_chat_history(trip_id)
+    print("User chat: retrieved chat history from database")
 
     try:
         p = prompt.Prompt()
         user_message = {
             "role": "user",
-            "content": content['message']
+            "content": [{
+                "type": "text",
+                "text": user_chat_message + " Answer in normal formatting."
+            }]
         }
-        messages = [user_message]
+        messages.append(user_message)
         completion = p.prompt(promptType.PromptType.ChatCompletions, messages)
 
     except TypeError:
@@ -381,7 +469,7 @@ def chatTripPlanningPrompt():
             "svc": "prompt-svc",
             "error": "Invalid type: please use 1) chat,\
                 2) embedded, or 3) image",
-            "messages": content['message'],
+            "messages": user_chat_message,
         }
 
     # check that the request body is valid
@@ -389,13 +477,122 @@ def chatTripPlanningPrompt():
         return {
             "svc": "prompt-svc",
             "error": completion['error'],
-            "messages": content['message'],
+            "messages": user_chat_message,
         }
+
+    # create a new user prompt on db's 'messages' table
+    postgressconn.create_message_to_db(trip_id=trip_id,
+                                       role="user",
+                                       content_type="text",
+                                       content_text=user_chat_message,
+                                       message_category=USERCHAT)
+
+    # create a new GPT's reply message to 'messages' table
+    postgressconn.create_message_to_db(trip_id=trip_id,
+                                       role=completion.choices[0].message.role,
+                                       content_type="text",
+                                       content_text=completion.choices[0].message.content,
+                                       message_category=GPTCHAT)
+
+    # close postgres DB connection
+    postgressconn.close_db_connection()
 
     return ({"messages": completion.choices[0].message.content}, 200)
 
 
->>>>>>> main:service/main.py
+###########################################################
+#
+#  7. User Updates the itinerary after chatting with GPT
+#   This gathers all alteration the user requested and asks GPT to revise
+#
+#  Receives:
+#   - HTTP POST JSON content: {trip_id}
+#   - Looks up chat history of trip by trip_id
+#   - Send pre-generated prompt to GPT to revise itinerary
+#
+#  Returns:
+#   - JSON: {"gpt-message": GPT's response in Itinerary format [library],
+#            "trip_id": Database's trip ID for future references [int]}
+#
+###########################################################
+@app.route('/v1/prompt/trip-planning-update', methods=['POST'])
+def updateTripPlanningPrompt():
+
+    print(request.get_data())
+
+    # get json body from POST request
+    content = request.get_json()
+
+    # check that the request body is valid
+    if ('trip_id' not in content):
+        return (ERROR_MESSAGE_400, 400)
+
+    trip_id = content['trip_id']
+
+    # read chat history from database using trip_id
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
+
+    # read all messages with trip_id from 'message' table in database
+    # returns an array of message objects
+    messages = postgressconn.get_chat_history(trip_id)
+    print("Update itinerary: retrieved chat history from database")
+
+    try:
+        p = prompt.Prompt()
+        user_message = {
+            "role": "user",
+            "content": [{
+                "type": "text",
+                "text": p.updateATripMessage()
+            }]
+        }
+        messages.append(user_message)
+        completion = p.prompt(promptType.PromptType.ChatCompletions, messages)
+        print("Update itinerary: succesfully recieved completion from GPT")
+
+    except TypeError:
+        return {
+            "svc": "prompt-svc",
+            "error": "Invalid type: please use 1) chat,\
+                2) embedded, or 3) image",
+            "messages": p.updateATripMessage,
+        }
+
+    # check that the request body is valid
+    if ('error' in completion):
+        return {
+            "svc": "prompt-svc",
+            "error": completion['error'],
+            "messages": p.updateATripMessage,
+        }
+
+    # create a new user prompt on db's 'messages' table
+    postgressconn.create_message_to_db(trip_id=trip_id,
+                                       role="user",
+                                       content_type="text",
+                                       content_text=p.updateATripMessage(),
+                                       message_category=USERCHAT)
+
+    # create a new GPT's reply message to 'messages' table
+    postgressconn.create_message_to_db(trip_id=trip_id,
+                                       role=completion.choices[0].message.role,
+                                       content_type="text",
+                                       content_text=completion.choices[0].message.content,
+                                       message_category=ITINERARY)
+
+    # get location from trips table for the weather service
+    trip = postgressconn.get_trip(trip_id=trip_id)
+    destination = trip['destination']
+
+    # close postgres DB connection
+    postgressconn.close_db_connection()
+
+    return ({"gpt-message": completion.choices[0].message.content,
+             "destination": destination}, 200)
+
+
 if __name__ == "__main__":
     app.run()
 
