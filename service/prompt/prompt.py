@@ -1,8 +1,8 @@
 # CS467 Online Capstone: GPT API Challenge
 # Kongkom Hiranpradit, Connor Flattum, Nathan Swaim, Noah Zajicek
 
-from .promptType import PromptType
-from .client import Client
+from service.promptType.promptType import PromptType
+from service.client.client import Client
 
 # The initial prompt context message for chatGPT to know how to answer
 PROMPT_ITINERARY = """You are a professional vacation planner helping users
@@ -77,6 +77,7 @@ class Prompt():
     def promptChatCompletions(self, messages):
 
         try:
+            print(messages)
             # Make call to chat GPT API
             completion = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -159,6 +160,15 @@ class Prompt():
 
         return self.messageConstructor(cleanString(PROMPT_WEATHER),
                                        cleanString(forcastMessage))
+    
+
+    # Constructs the initial plan a trip message
+    def respondToTripChat(self, travel_preferences):
+
+        message = f"""Give a response to a customer based on their chat response as they are planning their travel itinerary. 
+        Here is their response {travel_preferences}"""
+
+        return cleanString(message)  # removes whitespace from indendation
 
     def getLocalInfo(self, destination, time, date,
                      resterauntConditions):

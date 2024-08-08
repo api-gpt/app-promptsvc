@@ -12,7 +12,8 @@ import json
 # import io
 
 # from pytest import Session
-from models import promptType, prompt
+from service.promptType import promptType
+from service.prompt import prompt
 
 # Load ENV variables
 load_dotenv(find_dotenv(".env"))
@@ -22,8 +23,6 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Set up Flask app
 app = Flask(__name__)
-HOST = os.getenv('PROMPT_SVC_HOST')
-PORT = os.getenv('PROMPT_SVC_PORT')
 
 # Load configurations from config.py file
 # app.config.from_object('config.DevelopmentConfig')
@@ -319,6 +318,7 @@ def weatherPrompt():
 
     # manually add GPT's reply message to message log
     new_message_object = {
+<<<<<<< HEAD:prompt-svc/main.py
         "role": completion.choices[0].message.role,
         "content": [
             {
@@ -327,6 +327,19 @@ def weatherPrompt():
             }
         ]
     }
+=======
+            "role": completion.choices[0].message.role,
+            "content": [
+                {
+                    "type": "text",
+                    "json": json.loads(completion.choices[0].message.content)
+                }
+            ]
+        }
+    
+    print('weather update')
+    print(content['messages'])
+>>>>>>> main:service/main.py
 
     content['messages'].append(new_message_object)
 
@@ -338,8 +351,53 @@ def weatherPrompt():
     return ({"weather-update": completion.choices[0].message.content}, 200)
 
 
+<<<<<<< HEAD:prompt-svc/main.py
+=======
+
+@app.route('/v1/prompt/trip-planning-chat', methods=['POST'])
+def chatTripPlanningPrompt():
+
+    print(request.get_data())
+
+    # get json body from POST request
+    content = request.get_json()
+    print(content)
+
+    # check that the request body is valid
+    if ('message' not in content):
+        return (ERROR_MESSAGE_400, 400)
+
+    try:
+        p = prompt.Prompt()
+        user_message = {
+            "role": "user",
+            "content": content['message']
+        }
+        messages = [user_message]
+        completion = p.prompt(promptType.PromptType.ChatCompletions, messages)
+
+    except TypeError:
+        return {
+            "svc": "prompt-svc",
+            "error": "Invalid type: please use 1) chat,\
+                2) embedded, or 3) image",
+            "messages": content['message'],
+        }
+
+    # check that the request body is valid
+    if ('error' in completion):
+        return {
+            "svc": "prompt-svc",
+            "error": completion['error'],
+            "messages": content['message'],
+        }
+
+    return ({"messages": completion.choices[0].message.content}, 200)
+
+
+>>>>>>> main:service/main.py
 if __name__ == "__main__":
-    app.run(host=HOST, port=PORT, debug=True)
+    app.run()
 
 # Resources used:
 #   - https://medium.com/@abed63/flask-application-with-openai-
