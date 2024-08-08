@@ -34,7 +34,7 @@ Session(app)
 ERROR_MESSAGE_400 = {
     "svc": "prompt-svc",
     "Error": "The request body is invalid"
-    }
+}
 
 # Message log for this session, stores all messages between GPT and user
 # an array of 'message' objects
@@ -79,7 +79,7 @@ def initialRequest():
     # print(content)
     # check that the request body is valid
     if ('destination' not in content or 'num-users' not in content or
-            'num-days' not in content or 'preferences' not in content or 
+            'num-days' not in content or 'preferences' not in content or
             'budget' not in content):
         return (ERROR_MESSAGE_400, 400)
 
@@ -89,7 +89,6 @@ def initialRequest():
     days_num = content['num-days']
     travel_preferences = content['preferences']
     budget = content['budget']
-
 
     # create a session variable that stores all message logs
     # the message log is an array of 'message' objects
@@ -123,20 +122,21 @@ def initialRequest():
 
     # manually add GPT's reply message to message log
     new_message_object = {
-            "role": completion.choices[0].message.role,
-            "content": [
-                {
-                    "type": "text",
-                    "text": completion.choices[0].message.content
-                }
-            ]
-        }
+        "role": completion.choices[0].message.role,
+        "content": [
+            {
+                "type": "text",
+                "text": completion.choices[0].message.content
+            }
+        ]
+    }
 
     session['messages'].append(new_message_object)
 
     # print(completion)
 
     return ({"gpt-message": completion.choices[0].message.content}, 200)
+
 
 ###########################################################
 #
@@ -152,8 +152,6 @@ def initialRequest():
 #   - answer:   answer to the question prompted
 #
 ###########################################################
-
-
 @app.route('/v1/prompt/itinerary', methods=['POST'])
 def chatPrompt():
 
@@ -189,14 +187,91 @@ def chatPrompt():
 
     # manually add GPT's reply message to message log
     new_message_object = {
-            "role": completion.choices[0].message.role,
-            "content": [
-                {
-                    "type": "text",
-                    "text": completion.choices[0].message.content
-                }
-            ]
+        "role": completion.choices[0].message.role,
+        "content": [
+            {
+                "type": "text",
+                "text": completion.choices[0].message.content
+            }
+        ]
+    }
+    content['messages'].append(new_message_object)
+
+    return {
+        "svc": "prompt-svc",
+        "messages": content['messages'],
+    }
+
+
+###########################################################
+#
+#  Route to use prompts with chatGPT API
+#
+#  Receives:
+#   - history:  a history of the conversation
+#   - text:     the text of the question to ask
+#
+#  Returns:
+#   - history:  a history of the conversation
+#   - text:     the text of the question to ask
+#   - answer:   answer to the question prompted
+#
+###########################################################
+@app.route('/v1/localInfo', methods=['POST'])
+def localInfo():
+
+    # print(request.get_data())
+
+    content = request.get_json()
+
+    # print(content)
+    # check that the request body is valid
+    if ('destination' not in content or
+            'time' not in content or
+            'date' not in content or
+            'resterauntConditions' not in content):
+        return (ERROR_MESSAGE_400, 400)
+
+    # extract variables from the request body content
+    destination = content['destination']
+    time = content['time']
+    date = content['date']
+    resterauntConditions = content['resterauntConditions']
+
+    try:
+        p = prompt.Prompt()
+        # Create prompt message for local info
+        content['messages'] = p.getLocalInfo(destination, time,
+                                             date, resterauntConditions)
+        completion = p.prompt(promptType.PromptType.ChatCompletions,
+                              content['messages'])
+
+    except TypeError:
+        return {
+            "svc": "prompt-svc",
+            "error": "Invalid type: please use 1) chat,\
+                2) embedded, or 3) image",
+            "messages": content['messages'],
         }
+
+    # check that the request body is valid
+    if ('error' in completion):
+        return {
+            "svc": "prompt-svc",
+            "error": completion['error'],
+            "messages": content['messages'],
+        }
+
+    # manually add GPT's reply message to message log
+    new_message_object = {
+        "role": completion.choices[0].message.role,
+        "content": [
+            {
+                "type": "text",
+                "text": completion.choices[0].message.content
+            }
+        ]
+    }
     content['messages'].append(new_message_object)
 
     return {
@@ -219,7 +294,7 @@ def weatherPrompt():
 
     try:
         p = prompt.Prompt()
-        content['messages'] = p.getHourlyForcast(content['location'], 24)
+        content['messages'] = p.getHourlyForcast(content['location'])
         completion = p.prompt(promptType.PromptType.ChatCompletions,
                               content['messages'])
 
@@ -243,6 +318,16 @@ def weatherPrompt():
 
     # manually add GPT's reply message to message log
     new_message_object = {
+<<<<<<< HEAD:prompt-svc/main.py
+        "role": completion.choices[0].message.role,
+        "content": [
+            {
+                "type": "text",
+                "json": json.loads(completion.choices[0].message.content)
+            }
+        ]
+    }
+=======
             "role": completion.choices[0].message.role,
             "content": [
                 {
@@ -254,6 +339,7 @@ def weatherPrompt():
     
     print('weather update')
     print(content['messages'])
+>>>>>>> main:service/main.py
 
     content['messages'].append(new_message_object)
 
@@ -265,6 +351,8 @@ def weatherPrompt():
     return ({"weather-update": completion.choices[0].message.content}, 200)
 
 
+<<<<<<< HEAD:prompt-svc/main.py
+=======
 
 @app.route('/v1/prompt/trip-planning-chat', methods=['POST'])
 def chatTripPlanningPrompt():
@@ -307,6 +395,7 @@ def chatTripPlanningPrompt():
     return ({"messages": completion.choices[0].message.content}, 200)
 
 
+>>>>>>> main:service/main.py
 if __name__ == "__main__":
     app.run()
 
