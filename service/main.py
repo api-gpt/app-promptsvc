@@ -184,7 +184,7 @@ def initialRequest():
 #            "trip_id": Database's trip ID for future references [int]}
 #
 ###########################################################
-@app.route('/v1/prompt/get-trip/<int:trip_id>', methods=['GET'])
+@app.route('/v1/prompt/get-trip/<trip_id>', methods=['GET'])
 def getTrip(trip_id):
 
     # Extract user_id from header

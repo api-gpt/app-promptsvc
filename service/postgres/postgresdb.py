@@ -166,7 +166,7 @@ class PostgresDB():
         try:
             with self.conn.cursor() as cur:
                 # fetch all messages with trip_id from 'messages' table
-                cur.execute(SQLcmd.select_recent_itinerary, (str(trip_id)))
+                cur.execute(SQLcmd.select_recent_itinerary, (str(trip_id), ))
 
                 """Construct chat_history by appending each row of result.
                 Process the result set returned by the SELECT statement using
@@ -202,7 +202,7 @@ class PostgresDB():
     def get_trip(self, trip_id):
         try:
             with self.conn.cursor() as cur:
-                cur.execute(SQLcmd.select_trip, (str(trip_id)))
+                cur.execute(SQLcmd.select_trip, (str(trip_id), ))
                 print("Postgres: select trip successful.")
                 row = cur.fetchone()
                 respond = {
