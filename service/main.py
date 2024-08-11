@@ -88,7 +88,7 @@ def initialRequest():
     # check that the request body is valid
     if ('destination' not in content or 'num-users' not in content or
             'num-days' not in content or 'preferences' not in content or
-            'budget' not in content):
+            'budget' not in content or 'user_id' not in content):
         return (ERROR_MESSAGE_400, 400)
 
     # extract variables from the request body content
@@ -97,6 +97,7 @@ def initialRequest():
     days_num = content['num-days']
     travel_preferences = content['preferences']
     budget = content['budget']
+    user_id = content['user_id']
 
     # messages is an array of 'message' objects
     # a 'message' objects is a dictionary of "role" and "content"
@@ -139,7 +140,8 @@ def initialRequest():
                                 days_num=days_num,
                                 travelers_num=travelers_num,
                                 budget=budget,
-                                travel_preferences=travel_preferences)
+                                travel_preferences=travel_preferences,
+                                user_id=user_id)
 
     # create a new system prompt on db's 'messages' table
     postgressconn.create_message_to_db(trip_id=trip_id,
@@ -185,20 +187,63 @@ def initialRequest():
 @app.route('/v1/prompt/get-trip/<int:trip_id>', methods=['GET'])
 def getTrip(trip_id):
 
+    # Extract user_id from header
+    if 'Authorization' in request.headers:
+        # remove the word "Bearer" from the header: Authorization string
+        header = request.headers['Authorization'].split()
+        user_id = header[1]
+    else:
+        user_id = None
+
+    print(f"Get trip: user_id = {user_id}")
+
     # Database work (no need for try blocks, they are already in postgresdb.py)
     # create a PostgresDB() object, this automatically connects to PostgresDB
     postgressconn = PostgresDB()
 
+    # get trip from database
     trip = postgressconn.get_trip(trip_id)
 
+    # get most recent itinerary from database
     recent_itinerary = postgressconn.get_recent_itinerary(trip_id)
 
     # close postgres DB connection
     postgressconn.close_db_connection()
 
-    return ({"gpt-message": recent_itinerary,
-             "trip_id": trip_id,
-             "destination": trip['destination']}, 200)
+    # check that the correct user is requesting the trip
+    if (user_id == trip['user_id']):
+        return ({"gpt-message": recent_itinerary,
+                 "trip_id": trip_id,
+                 "destination": trip['destination']}, 200)
+    else:
+        return ({"Error": "Unauthorized, this trip does not belong to you."},
+                401)
+
+@app.route('/v1/prompt/get-trip-history', methods=['GET'])
+def getHistory():
+
+    # Extract user_id from header
+    if 'Authorization' in request.headers:
+        # remove the word "Bearer" from the header: Authorization string
+        header = request.headers['Authorization'].split()
+        user_id = header[1]
+    else:
+        # if there's no auth header, raise error
+        raise Exception({"code": "no auth header",
+                         "description": "Authorization header is missing"}, 
+                        401)
+
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
+
+    # get all trips of a user and store in 'history'
+    history = postgressconn.get_trip_from_user(user_id)
+
+    # close postgres DB connection
+    postgressconn.close_db_connection()
+
+    return ({"history": history}, 200)
 
 
 ###########################################################

@@ -1,11 +1,14 @@
 create_trips_table = """CREATE TABLE IF NOT EXISTS trips (
                               trip_id SERIAL NOT NULL PRIMARY KEY,
-                              oauth_token VARCHAR(255),
+                              user_id VARCHAR(255),
                               destination VARCHAR(255) NOT NULL,
                               days_num VARCHAR(255) NOT NULL,
                               travelers_num VARCHAR(255) NOT NULL,
                               budget VARCHAR(255) NOT NULL,
-                              travel_preferences TEXT
+                              travel_preferences TEXT,
+                              FOREIGN KEY(user_id)
+                                REFERENCES users(id)
+                                ON DELETE CASCADE
                              );"""
 
 create_messages_table = """CREATE TABLE IF NOT EXISTS messages (
@@ -21,12 +24,12 @@ create_messages_table = """CREATE TABLE IF NOT EXISTS messages (
                             CONSTRAINT message_pk UNIQUE (message_id, trip_id)
                             );"""
 
-insert_trips_table = """INSERT INTO trips (oauth_token, destination,
+insert_trips_table = """INSERT INTO trips (user_id, destination,
                         days_num, travelers_num, budget, travel_preferences)
                         VALUES(%s, %s, %s, %s, %s, %s)
                         RETURNING trip_id;"""
 
-insert_trips_table_noauth = """INSERT INTO trips (destination, days_num,
+insert_trips_table_no_user_id = """INSERT INTO trips (destination, days_num,
                             travelers_num, budget, travel_preferences)
                             VALUES(%s, %s, %s, %s, %s)
                             RETURNING trip_id;"""
@@ -48,14 +51,20 @@ select_recent_itinerary = """SELECT role, content_type, content_text,
                             WHERE trip_id=%s AND message_category='ITINERARY'
                             ORDER BY message_id DESC;"""
 
-select_all_trips = """SELECT trip_id, oauth_token, destination,
+select_all_trips = """SELECT trip_id, user_id, destination,
                 days_num, travelers_num, budget, travel_preferences
                 FROM trips ORDER BY trip_id;"""
 
-select_trip = """SELECT trip_id, oauth_token, destination,
+select_trip = """SELECT trip_id, user_id, destination,
                 days_num, travelers_num, budget, travel_preferences
                 FROM trips
                 WHERE trip_id=%s;"""
+
+select_trip_from_user = """SELECT trip_id, user_id, destination,
+                days_num, travelers_num, budget, travel_preferences
+                FROM trips
+                WHERE user_id=%s
+                ORDER BY trip_id;"""
 
 # CASCADE means delete all data in other table that references this table
 drop_trips_table = """DROP table trips CASCADE;"""
@@ -70,3 +79,14 @@ list_all_tables = """select * from information_schema.tables
 drop_table = """DROP TABLE %s;"""
 
 truncate_table = """TRUNCATE TABLE %s;"""
+
+insert_users_table = """INSERT INTO users (id, provider, access_token,
+                        first_name, last_name, email, url)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (id) DO UPDATE SET 
+                        access_token = EXCLUDED.access_token,
+                        first_name = EXCLUDED.first_name,
+                        last_name = EXCLUDED.last_name,
+                        email = EXCLUDED.email,
+                        url = EXCLUDED.url
+                        RETURNING id;"""
