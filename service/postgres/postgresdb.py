@@ -43,10 +43,10 @@ class PostgresDB():
         try:
             # create a new cursor, with statement will auto close the cursor
             with self.conn.cursor() as cur:
-                cur.execute(SQLcmd.create_trips_table)
-                print('Postgres: trips table created.')
-                cur.execute(SQLcmd.create_messages_table)
-                print('Postgres: messages table created.')
+                # cur.execute(SQLcmd.create_trips_table)
+                # print('Postgres: trips table created.')
+                # cur.execute(SQLcmd.create_messages_table)
+                # print('Postgres: messages table created.')
                 cur.execute(SQLcmd.create_profiles_table)
                 print('Postgres: profiles table created.')
                 # commit changes to database
