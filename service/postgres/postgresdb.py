@@ -46,7 +46,7 @@ class PostgresDB():
                 print('Postgres: trips table created.')
                 cur.execute(SQLcmd.create_messages_table)
                 print('Postgres: messages table created.')
-                cur.execute(SQLcmd.create_profile_table)
+                cur.execute(SQLcmd.create_profiles_table)
                 print('Postgres: profiles table created.')
                 # commit changes to database
                 self.conn.commit()

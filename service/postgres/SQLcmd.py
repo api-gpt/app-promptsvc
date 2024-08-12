@@ -24,7 +24,7 @@ create_messages_table = """CREATE TABLE IF NOT EXISTS messages (
                             CONSTRAINT message_pk UNIQUE (message_id, trip_id)
                             );"""
 
-create_profile_table = """CREATE TABLE IF NOT EXISTS profiles (
+create_profiles_table = """CREATE TABLE IF NOT EXISTS profiles (
                             profile_id SERIAL NOT NULL PRIMARY KEY,
                             user_id VARCHAR(255),
                             age INT NOT NULL,
