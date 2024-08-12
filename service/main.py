@@ -12,9 +12,9 @@ import json
 # import io
 
 # from pytest import Session
-from promptType import promptType
-from prompt import prompt
-from postgres.postgresdb import PostgresDB
+from service.promptType import promptType
+from service.prompt import prompt
+from service.postgres.postgresdb import PostgresDB
 
 # Load ENV variables
 load_dotenv(find_dotenv(".env"))
@@ -26,7 +26,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 app = Flask(__name__)
 
 # Load configurations from config.py file
-# app.config.from_object('config.DevelopmentConfig')
+# app.config.from_object('service.config.DevelopmentConfig')
 
 # Configer Flask session variables
 app.config['SESSION_TYPE'] = 'filesystem'
