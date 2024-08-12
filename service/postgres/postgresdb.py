@@ -2,7 +2,7 @@
     Used by prompt-svc main.py
 """
 
-import postgres.SQLcmd as SQLcmd
+import service.postgres.SQLcmd as SQLcmd
 import psycopg2, os
 from dotenv import load_dotenv
 
