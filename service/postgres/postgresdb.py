@@ -28,6 +28,7 @@ class PostgresDB():
 
     def __init__(self) -> None:
         self.conn = init_db_connection()
+        self.create_table()
 
     # close connection with Postgres
     def close_db_connection(self):
