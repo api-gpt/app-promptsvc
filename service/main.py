@@ -669,18 +669,22 @@ def getUserProfile():
 @app.route('/v1/prompt/profile', methods=['POST'])
 def updateUserProfile():
 
+    print("updating user profile")
+
     # Extract user_id from header
     if 'Authorization' in request.headers:
         # remove the word "Bearer" from the header: Authorization string
         header = request.headers['Authorization'].split()
         user_id = header[1]
     else:
+        print("unauthorized")
         return {
             "error": "Unauthorized access forbidden"
         }
 
     # get json body from POST request
     content = request.get_json()
+    print(content)
 
     # check that the request body is valid
     if ('age' not in content or
