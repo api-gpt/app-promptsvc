@@ -36,7 +36,7 @@ create_profiles_table = """CREATE TABLE IF NOT EXISTS profiles (
                               FOREIGN KEY(user_id)
                                 REFERENCES users(id)
                                 ON DELETE CASCADE,
-                            CONSTRAINT message_pk UNIQUE (profile_id, user_id)
+                            CONSTRAINT profile_pk UNIQUE (profile_id, user_id)
                             );"""
 
 insert_trips_table = """INSERT INTO trips (user_id, destination,
