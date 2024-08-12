@@ -12,9 +12,9 @@ import json
 # import io
 
 # from pytest import Session
-from promptType import promptType
-from prompt import prompt
-from postgres.postgresdb import PostgresDB
+from service.promptType import promptType
+from service.prompt import prompt
+from service.postgres.postgresdb import PostgresDB
 
 # Load ENV variables
 load_dotenv(find_dotenv(".env"))
@@ -26,7 +26,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 app = Flask(__name__)
 
 # Load configurations from config.py file
-# app.config.from_object('config.DevelopmentConfig')
+# app.config.from_object('service.config.DevelopmentConfig')
 
 # Configer Flask session variables
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -88,7 +88,7 @@ def initialRequest():
     # check that the request body is valid
     if ('destination' not in content or 'num-users' not in content or
             'num-days' not in content or 'preferences' not in content or
-            'budget' not in content):
+            'budget' not in content or 'user_id' not in content):
         return (ERROR_MESSAGE_400, 400)
 
     # extract variables from the request body content
@@ -97,6 +97,7 @@ def initialRequest():
     days_num = content['num-days']
     travel_preferences = content['preferences']
     budget = content['budget']
+    user_id = content['user_id']
 
     # messages is an array of 'message' objects
     # a 'message' objects is a dictionary of "role" and "content"
@@ -139,7 +140,8 @@ def initialRequest():
                                 days_num=days_num,
                                 travelers_num=travelers_num,
                                 budget=budget,
-                                travel_preferences=travel_preferences)
+                                travel_preferences=travel_preferences,
+                                user_id=user_id)
 
     # create a new system prompt on db's 'messages' table
     postgressconn.create_message_to_db(trip_id=trip_id,
@@ -182,23 +184,66 @@ def initialRequest():
 #            "trip_id": Database's trip ID for future references [int]}
 #
 ###########################################################
-@app.route('/v1/prompt/get-trip/<int:trip_id>', methods=['GET'])
+@app.route('/v1/prompt/get-trip/<trip_id>', methods=['GET'])
 def getTrip(trip_id):
+
+    # Extract user_id from header
+    if 'Authorization' in request.headers:
+        # remove the word "Bearer" from the header: Authorization string
+        header = request.headers['Authorization'].split()
+        user_id = header[1]
+    else:
+        user_id = None
+
+    print(f"Get trip: user_id = {user_id}")
 
     # Database work (no need for try blocks, they are already in postgresdb.py)
     # create a PostgresDB() object, this automatically connects to PostgresDB
     postgressconn = PostgresDB()
 
+    # get trip from database
     trip = postgressconn.get_trip(trip_id)
 
+    # get most recent itinerary from database
     recent_itinerary = postgressconn.get_recent_itinerary(trip_id)
 
     # close postgres DB connection
     postgressconn.close_db_connection()
 
-    return ({"gpt-message": recent_itinerary,
-             "trip_id": trip_id,
-             "destination": trip['destination']}, 200)
+    # check that the correct user is requesting the trip
+    if (user_id == trip['user_id']):
+        return ({"gpt-message": recent_itinerary,
+                 "trip_id": trip_id,
+                 "destination": trip['destination']}, 200)
+    else:
+        return ({"Error": "Unauthorized, this trip does not belong to you."},
+                401)
+
+@app.route('/v1/prompt/get-trip-history', methods=['GET'])
+def getHistory():
+
+    # Extract user_id from header
+    if 'Authorization' in request.headers:
+        # remove the word "Bearer" from the header: Authorization string
+        header = request.headers['Authorization'].split()
+        user_id = header[1]
+    else:
+        # if there's no auth header, raise error
+        raise Exception({"code": "no auth header",
+                         "description": "Authorization header is missing"}, 
+                        401)
+
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
+
+    # get all trips of a user and store in 'history'
+    history = postgressconn.get_trip_from_user(user_id)
+
+    # close postgres DB connection
+    postgressconn.close_db_connection()
+
+    return ({"history": history}, 200)
 
 
 ###########################################################
@@ -591,6 +636,74 @@ def updateTripPlanningPrompt():
 
     return ({"gpt-message": completion.choices[0].message.content,
              "destination": destination}, 200)
+
+###########################################################
+#
+#  8. Travel Recommendations
+#
+#  Receives: {trip_id: trip_id, content: content|Itinerary|event}
+#
+#  Returns: { "Event 1":{ "recommendation": "Some recommendation text"},
+#           "Event 2": {"recommendation": "Another recommendation text"},...}
+#
+#
+###########################################################
+@app.route('/v1/prompt/get-travel-recommendation', methods=['POST'])
+def getTravelRecommendationPrompt():
+    # get json body from POST request
+    content = request.get_json()
+    trip_id = content['trip_id']
+    event = content['content']['itinerary']['event']
+
+    # check that the request body is valid
+    if ('content' not in content or 'trip_id' not in content):
+        return (ERROR_MESSAGE_400, 400)
+
+    # read chat history from database using trip_id
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
+
+    # read all messages with trip_id from 'message' table in database
+    # returns an array of message objects
+    messages = postgressconn.get_chat_history(trip_id)
+    print("User event: retrieved chat history from database")
+
+    # Create payload response to send to ChatGPT API
+    payload = '. Provide 8 different event recommendations instead. Each recommendation is a maximum of 2 sentences. output should be like: { "Event 1": { "recommendation": "Some recommendation text"},"Event 2": {"recommendation": "Another recommendation text"},...}'
+    
+    try:
+        p = prompt.Prompt()
+        user_message = {
+            "role": "user",
+            "content": [{
+                "type": "text",
+                "text": event + payload
+            }]
+        }
+        messages.append(user_message)
+        completion = p.prompt(promptType.PromptType.ChatCompletions, messages)
+
+    except TypeError:
+        return {
+            "svc": "prompt-svc",
+            "error": "Invalid type: please use 1) chat,\
+                2) embedded, or 3) image",
+            "messages": event,
+        }
+
+    # check that the request body is valid
+    if ('error' in completion):
+        return {
+            "svc": "prompt-svc",
+            "error": completion['error'],
+            "messages": event,
+        }
+
+    # close postgres DB connection
+    postgressconn.close_db_connection()
+
+    return ({"messages": completion.choices[0].message.content}, 200)
 
 
 if __name__ == "__main__":
