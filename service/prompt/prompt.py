@@ -15,6 +15,7 @@ PROMPT_ITINERARY = """You are a professional vacation planner helping users
                     last day."""
 
 
+
 ITINERARY_JSON = {
     "time": "string",
     "location": "string",
@@ -27,7 +28,14 @@ ITINERARY_JSON = {
     "nearby activity": "string"
 }
 
-
+PROMPT_UPDATE = f"""Give me an updated itinerary of everything we discussed up
+                    to this point. Use the following json format with this
+                    schema: {ITINERARY_JSON} where time is based on 12 hour
+                    clock, cost is a dollar amount, and average duration is in
+                    hours. It will be housed within this structure
+                    " "Day 1": [], "Day 2": [], "Day 3": [] " and so on until
+                    the last day."""
+                
 PROMPT_WEATHER = """You are a weather service."""
 
 WEATHER_JSON = {
@@ -77,7 +85,7 @@ class Prompt():
     def promptChatCompletions(self, messages):
 
         try:
-            print(messages)
+            # print(messages)
             # Make call to chat GPT API
             completion = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -87,7 +95,7 @@ class Prompt():
                 frequency_penalty=0,
                 presence_penalty=0
             )
-            print(completion)
+            # print(completion)
             return completion
         except Exception as e:
             print(e)
@@ -135,15 +143,19 @@ class Prompt():
                 area, enjoying local food, with a one or two night
                 life. We will strictly stay in {destination}. Budget should
                 be {budget} per person without airfare, but include
-                ehotels, meals and other expenses.
+                ehotels, meals and other expenses. {travel_preferences}
                 Use the following json format with this schema:
                 {ITINERARY_JSON}
                 where time is based on 12 hour clock, cost is a dollar amount,
                 and average duration is in hours. It will be housed within this
-                structure " "Day 1": [] "
-                We will be leaving from New York, USA. {travel_preferences}"""
+                structure " "Day 1": [], "Day 2": [], "Day 3": [] " and so on
+                until the last day."""
 
         return cleanString(message)  # removes whitespace from indendation
+
+    # Constructs an update itinerary message
+    def updateATripMessage(self):
+        return cleanString(PROMPT_UPDATE)
 
     # Gets hourly forcast for the next day at the given location
     def getHourlyForcast(self, location):
@@ -160,7 +172,7 @@ class Prompt():
 
         return self.messageConstructor(cleanString(PROMPT_WEATHER),
                                        cleanString(forcastMessage))
-    
+
 
     # Constructs the initial plan a trip message
     def respondToTripChat(self, travel_preferences):
