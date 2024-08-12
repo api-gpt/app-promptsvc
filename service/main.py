@@ -219,6 +219,7 @@ def getTrip(trip_id):
         return ({"Error": "Unauthorized, this trip does not belong to you."},
                 401)
 
+
 @app.route('/v1/prompt/get-trip-history', methods=['GET'])
 def getHistory():
 
@@ -636,6 +637,96 @@ def updateTripPlanningPrompt():
 
     return ({"gpt-message": completion.choices[0].message.content,
              "destination": destination}, 200)
+
+
+@app.route('/v1/prompt/profile', methods=['GET'])
+def getUserProfile():
+
+    # Extract user_id from header
+    if 'Authorization' in request.headers:
+        # remove the word "Bearer" from the header: Authorization string
+        header = request.headers['Authorization'].split()
+        user_id = header[1]
+    else:
+        return {
+            "error": "Unauthorized access forbidden"
+        }
+
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
+
+    profile = postgressconn.get_profile(user_id)
+
+    if profile is None:
+        return {
+            "error": "Error with database"
+        }
+
+    return profile
+
+
+@app.route('/v1/prompt/profile', methods=['POST'])
+def updateUserProfile():
+
+    # Extract user_id from header
+    if 'Authorization' in request.headers:
+        # remove the word "Bearer" from the header: Authorization string
+        header = request.headers['Authorization'].split()
+        user_id = header[1]
+    else:
+        return {
+            "error": "Unauthorized access forbidden"
+        }
+
+    # get json body from POST request
+    content = request.get_json()
+
+    # check that the request body is valid
+    if ('age' not in content or
+            'travelStyle' not in content or
+            'travelPriorities' not in content or
+            'travelAvoidances' not in content or
+            'dietaryRestrictions' not in content or
+            'accomodations' not in content):
+        return (ERROR_MESSAGE_400, 400)
+
+    # Get form data
+    age = content['age']
+    travelStyle = content['travel-style']
+    travelPriorities = content['travel-priorities']
+    travelAvoidances = content['travel-avoidances']
+    dietaryRestrictions = content['dietary-restrictions']
+    accomodations = content['accomodations']
+
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
+
+    profile = postgressconn.get_profile(user_id)
+    response = None
+
+    if profile is not None:
+        response = postgressconn.update_profile(age, travelStyle,
+                                                travelPriorities,
+                                                travelAvoidances,
+                                                dietaryRestrictions,
+                                                accomodations, user_id)
+    else:
+        response = postgressconn.insert_profile(user_id, age, travelStyle,
+                                                travelPriorities,
+                                                travelAvoidances,
+                                                dietaryRestrictions,
+                                                accomodations)
+
+    if response is None:
+        return {
+            "error": "Error with database"
+        }
+
+    return {
+        "msg": response
+    }
 
 
 if __name__ == "__main__":

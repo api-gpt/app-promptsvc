@@ -24,6 +24,21 @@ create_messages_table = """CREATE TABLE IF NOT EXISTS messages (
                             CONSTRAINT message_pk UNIQUE (message_id, trip_id)
                             );"""
 
+create_profile_table = """CREATE TABLE IF NOT EXISTS profiles (
+                            profile_id SERIAL NOT NULL PRIMARY KEY,
+                            user_id VARCHAR(255),
+                            age INT NOT NULL,
+                            travelStyle TEXT NOT NULL,
+                            travelPriorities TEXT NOT NULL,
+                            travelAvoidances TEXT NOT NULL,
+                            dietaryRestrictions TEXT NOT NULL,
+                            accomodations TEXT NOT NULL,
+                              FOREIGN KEY(user_id)
+                                REFERENCES users(id)
+                                ON DELETE CASCADE,
+                            CONSTRAINT message_pk UNIQUE (profile_id, user_id)
+                            );"""
+
 insert_trips_table = """INSERT INTO trips (user_id, destination,
                         days_num, travelers_num, budget, travel_preferences)
                         VALUES(%s, %s, %s, %s, %s, %s)
@@ -38,6 +53,12 @@ insert_messages_table = """INSERT INTO messages (trip_id, role, content_type,
                             content_text, message_category)
                             VALUES(%s, %s, %s, %s, %s)
                             RETURNING message_id;"""
+
+insert_profiles_table = """INSERT INTO profiles (profile_id, user_id, age,
+                            travelStyle, travelPriorities, travelAvoidances,
+                            dietaryRestrictions, accomodations)
+                            VALUES(%s, %s, %s, %s, %s, %s, %s)
+                            RETURNING profile_id;"""
 
 # returns the entire chat history
 select_message = """SELECT role, content_type, content_text, message_category
@@ -65,6 +86,20 @@ select_trip_from_user = """SELECT trip_id, user_id, destination,
                 FROM trips
                 WHERE user_id=%s
                 ORDER BY trip_id;"""
+
+select_profile = """SELECT profile_id, user_id, age,
+                travelStyle, travelPriorities, travelAvoidances,
+                dietaryRestrictions, accomodations
+                FROM profiles
+                WHERE user_id=%s;"""
+
+update_profiles_table = """UPDATE profiles
+                           SET (age,
+                            travelStyle, travelPriorities, travelAvoidances,
+                            dietaryRestrictions, accomodations)
+                            = (%s, %s, %s, %s, %s, %s)
+                            WHERE user_id=%s
+                            RETURNING profile_id;"""
 
 # CASCADE means delete all data in other table that references this table
 drop_trips_table = """DROP table trips CASCADE;"""

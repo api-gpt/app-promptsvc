@@ -3,7 +3,8 @@
 """
 
 import postgres.SQLcmd as SQLcmd
-import psycopg2, os
+import psycopg2
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -278,7 +279,8 @@ class PostgresDB():
             print(f'Postgres: Could not select trips: {error}.')
 
     # insert user
-    def create_user_to_db(self, id, provider, access_token, first_name, last_name, email, url):
+    def create_user_to_db(self, id, provider, access_token,
+                          first_name, last_name, email, url):
         try:
             # create a new cursor, with statement will auto close the cursor
             with self.conn.cursor() as cur:
@@ -296,9 +298,93 @@ class PostgresDB():
                 if rows:
                     user_id = rows[0]
 
-                print(f"Postgres: New user created.")
+                print("Postgres: New user created.")
 
                 return user_id
 
         except (Exception, psycopg2.DatabaseError) as error:
             print(f'Could not insert user to the Database: {error}.')
+
+    # retieve a profile
+    # returns a library
+    def get_profile(self, user_id):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(SQLcmd.select_profile, (str(user_id), ))
+                print("Postgres: select trip successful.")
+                row = cur.fetchone()
+                respond = {
+                    "profile_id": row[0],
+                    "user_id": row[1],
+                    "age": row[2],
+                    "travelStyle": row[3],
+                    "travelPriorities": row[4],
+                    "travelAvoidances": row[5],
+                    "dietaryRestrictions": row[6],
+                    "accomodations": row[7]
+                }
+            return respond
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f'Postgres: Could not select profile: {error}.')
+            return None
+
+    # create a profile
+    def insert_profile(self, user_id, age,
+                       travelStyle, travelPriorities, travelAvoidances,
+                       dietaryRestrictions, accomodations):
+        try:
+            # create a new cursor, with statement will auto close the cursor
+            with self.conn.cursor() as cur:
+
+                # execute the INSERT statement
+                cur.execute(SQLcmd.insert_profiles_table,
+                            (user_id, age,
+                             travelStyle, travelPriorities, travelAvoidances,
+                             dietaryRestrictions, accomodations))
+
+                # commit the changes to the database
+                self.conn.commit()
+
+                # get the generated id back
+                rows = cur.fetchone()
+                if rows:
+                    profile_id = rows[0]
+
+                print("Postgres: New profile created.")
+
+                return profile_id
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f'Could not insert profile to the Database: {error}.')
+            return None
+
+    # update a profile
+    def update_profile(self, age, travelStyle, travelPriorities,
+                       travelAvoidances, dietaryRestrictions,
+                       accomodations, user_id):
+        try:
+            # create a new cursor, with statement will auto close the cursor
+            with self.conn.cursor() as cur:
+
+                # execute the INSERT statement
+                cur.execute(SQLcmd.update_profiles_table,
+                            (age, travelStyle, travelPriorities,
+                             travelAvoidances, dietaryRestrictions,
+                             accomodations, user_id))
+
+                # commit the changes to the database
+                self.conn.commit()
+
+                # get the generated id back
+                rows = cur.fetchone()
+                if rows:
+                    profile_id = rows[0]
+
+                print("Postgres: New profile created.")
+
+                return profile_id
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f'Could not insert profile to the Database: {error}.')
+            return None
