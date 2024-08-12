@@ -131,7 +131,7 @@ class PostgresDB():
             # create a new cursor, with statement will auto close the cursor
             with self.conn.cursor() as cur:
                 # fetch all messages with trip_id from 'messages' table
-                cur.execute(SQLcmd.select_message, (str(trip_id)))
+                cur.execute(SQLcmd.select_message, (str(trip_id), ))
 
                 """Construct chat_history by appending each row of result.
                 Process the result set returned by the SELECT statement using
