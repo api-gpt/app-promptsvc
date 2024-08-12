@@ -28,7 +28,6 @@ class PostgresDB():
 
     def __init__(self) -> None:
         self.conn = init_db_connection()
-        self.create_table()
 
     # close connection with Postgres
     def close_db_connection(self):
@@ -330,7 +329,6 @@ class PostgresDB():
 
         except (Exception, psycopg2.DatabaseError) as error:
             print(f'Postgres: Could not select profile: {error}.')
-            return None
 
     # create a profile
     def insert_profile(self, user_id, age,
@@ -360,7 +358,6 @@ class PostgresDB():
 
         except (Exception, psycopg2.DatabaseError) as error:
             print(f'Could not insert profile to the Database: {error}.')
-            return None
 
     # update a profile
     def update_profile(self, age, travelStyle, travelPriorities,
@@ -390,4 +387,3 @@ class PostgresDB():
 
         except (Exception, psycopg2.DatabaseError) as error:
             print(f'Could not insert profile to the Database: {error}.')
-            return None
