@@ -677,21 +677,19 @@ def updateUserProfile():
         header = request.headers['Authorization'].split()
         user_id = header[1]
     else:
-        print("unauthorized")
         return {
             "error": "Unauthorized access forbidden"
         }
 
     # get json body from POST request
     content = request.get_json()
-    print(content)
 
     # check that the request body is valid
     if ('age' not in content or
-            'travelStyle' not in content or
-            'travelPriorities' not in content or
-            'travelAvoidances' not in content or
-            'dietaryRestrictions' not in content or
+            'travel-style' not in content or
+            'travel-priorities' not in content or
+            'travel-avoidances' not in content or
+            'dietary-restrictions' not in content or
             'accomodations' not in content):
         return (ERROR_MESSAGE_400, 400)
 
