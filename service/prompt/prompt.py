@@ -15,7 +15,6 @@ PROMPT_ITINERARY = """You are a professional vacation planner helping users
                     last day."""
 
 
-
 ITINERARY_JSON = {
     "time": "string",
     "location": "string",

@@ -99,6 +99,13 @@ def initialRequest():
     budget = content['budget']
     user_id = content['user_id']
 
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
+    
+    travel_preferences.join(profileString(user_id))
+
+
     # messages is an array of 'message' objects
     # a 'message' objects is a dictionary of "role" and "content"
     completion = None
@@ -129,10 +136,6 @@ def initialRequest():
             "error": completion['error'],
             "messages": messages,
         }
-
-    # Database work (no need for try blocks, they are already in postgresdb.py)
-    # create a PostgresDB() object, this automatically connects to PostgresDB
-    postgressconn = PostgresDB()
 
     # create a new trip on the db's 'trips' table, return auto-gen trip_id
     trip_id = postgressconn.create_trip_to_db(
@@ -729,6 +732,27 @@ def updateUserProfile():
     return {
         "msg": response
     }
+
+
+def profileString(user_id):
+
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
+
+    profile = postgressconn.get_profile(user_id)
+
+    if profile is None:
+        return ""
+    else:
+        return f"""
+        Plan a trip for a person {profile.get('age')} years old. This person's
+        travel style involves: {profile.get('travelStyle')}. This person
+        prioritizes: {profile.get('travelPriorities')}. This person avoids:
+        {profile.get('travelAvoidances')}. Dietary restrictions:
+        {profile.get('travelAvoidances')}. Additional accomodations include:
+        {profile.get('accomodations')}.
+        """
 
 
 if __name__ == "__main__":

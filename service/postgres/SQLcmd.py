@@ -54,7 +54,7 @@ insert_messages_table = """INSERT INTO messages (trip_id, role, content_type,
                             VALUES(%s, %s, %s, %s, %s)
                             RETURNING message_id;"""
 
-insert_profiles_table = """INSERT INTO profiles (profile_id, user_id, age,
+insert_profiles_table = """INSERT INTO profiles (user_id, age,
                             travelStyle, travelPriorities, travelAvoidances,
                             dietaryRestrictions, accomodations)
                             VALUES(%s, %s, %s, %s, %s, %s, %s)
