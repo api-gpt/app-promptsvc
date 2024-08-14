@@ -92,10 +92,20 @@ def run():
     # creates a PostgresDB object
     postgressconn = PostgresDB()
 
-    postgressconn.create_table()
+    #postgressconn.drop_table()
 
-    # DOESN'T WORK YET! Suppose to get all tables
-    postgressconn.get_tables()
+    #postgressconn.create_table()
+
+    postgressconn.create_user_to_db(
+        id='test_user_id',
+        provider='test_provider',
+        access_token='test_access_token',
+        first_name='John',
+        last_name='Doe',
+        email='john_doe@gmail.com',
+        url='john_doe.com'
+    )
+
 
     postgressconn.close_db_connection()
 

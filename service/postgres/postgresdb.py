@@ -46,6 +46,8 @@ class PostgresDB():
                 print('Postgres: trips table created.')
                 cur.execute(SQLcmd.create_messages_table)
                 print('Postgres: messages table created.')
+                cur.execute(SQLcmd.create_profiles_table)
+                print('Postgres: profiles table created.')
                 # commit changes to database
                 self.conn.commit()
             return
@@ -65,19 +67,20 @@ class PostgresDB():
 
     # create a new trip to trips table
     def create_trip_to_db(self, destination, days_num, travelers_num, budget,
-                          travel_preferences, oauth_token=None):
+                          travel_preferences, user_id=None):
+        print(user_id)
         try:
             # create a new cursor, with statement will auto close the cursor
             with self.conn.cursor() as cur:
-                if oauth_token is not None:
+                if user_id is not None:
                     # execute the INSERT statement
                     cur.execute(SQLcmd.insert_trips_table,
-                                (oauth_token, destination, days_num,
+                                (user_id, destination, days_num,
                                     travelers_num, budget, travel_preferences))
 
                 else:
                     # execute the INSERT statement
-                    cur.execute(SQLcmd.insert_trips_table_noauth,
+                    cur.execute(SQLcmd.insert_trips_table_no_user_id,
                                 (destination, days_num, travelers_num,
                                     budget, travel_preferences))
 
@@ -132,7 +135,7 @@ class PostgresDB():
             # create a new cursor, with statement will auto close the cursor
             with self.conn.cursor() as cur:
                 # fetch all messages with trip_id from 'messages' table
-                cur.execute(SQLcmd.select_message, (str(trip_id)))
+                cur.execute(SQLcmd.select_message, (str(trip_id), ))
 
                 """Construct chat_history by appending each row of result.
                 Process the result set returned by the SELECT statement using
@@ -167,7 +170,7 @@ class PostgresDB():
         try:
             with self.conn.cursor() as cur:
                 # fetch all messages with trip_id from 'messages' table
-                cur.execute(SQLcmd.select_recent_itinerary, (str(trip_id)))
+                cur.execute(SQLcmd.select_recent_itinerary, (str(trip_id), ))
 
                 """Construct chat_history by appending each row of result.
                 Process the result set returned by the SELECT statement using
@@ -203,12 +206,12 @@ class PostgresDB():
     def get_trip(self, trip_id):
         try:
             with self.conn.cursor() as cur:
-                cur.execute(SQLcmd.select_trip, (str(trip_id)))
+                cur.execute(SQLcmd.select_trip, (str(trip_id), ))
                 print("Postgres: select trip successful.")
                 row = cur.fetchone()
                 respond = {
                     "trip_id": row[0],
-                    "oauth_token": row[1],
+                    "user_id": row[1],
                     "destination": row[2],
                     "days_num": row[3],
                     "travelers_num": row[4],
@@ -247,3 +250,141 @@ class PostgresDB():
             return
         except (Exception, psycopg2.DatabaseError) as error:
             print(f'Postgres: Could not truncate table: {error}.')
+
+    # get all trip of a user
+    def get_trip_from_user(self, user_id):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(SQLcmd.select_trip_from_user, (str(user_id), ))
+                print("Postgres: select trip successful.")
+                history = []
+                row = cur.fetchone()
+                while row is not None:
+                    # turn each row of data into message_object
+                    trip_object = {
+                        "trip_id": row[0],
+                        "user_id": row[1],
+                        "destination": row[2],
+                        "days_num": row[3],
+                        "travelers_num": row[4],
+                        "budget": row[5],
+                        "travel_preference": row[6]
+                    }
+                    # then append to chat_history
+                    history.append(trip_object)
+                    row = cur.fetchone()
+
+                print("Postgres: select trips from a user succesful.")
+
+            return history
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f'Postgres: Could not select trips: {error}.')
+
+    # insert user
+    def create_user_to_db(self, id, provider, access_token,
+                          first_name, last_name, email, url):
+        try:
+            # create a new cursor, with statement will auto close the cursor
+            with self.conn.cursor() as cur:
+
+                # execute the INSERT statement
+                cur.execute(SQLcmd.insert_users_table,
+                            (id, provider, access_token,
+                             first_name, last_name, email, url))
+
+                # commit the changes to the database
+                self.conn.commit()
+
+                # get the generated id back
+                rows = cur.fetchone()
+                if rows:
+                    user_id = rows[0]
+
+                print("Postgres: New user created.")
+
+                return user_id
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f'Could not insert user to the Database: {error}.')
+
+    # retieve a profile
+    # returns a library
+    def get_profile(self, user_id):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(SQLcmd.select_profile, (str(user_id), ))
+                print("Postgres: select trip successful.")
+                row = cur.fetchone()
+                respond = {
+                    "profile_id": row[0],
+                    "user_id": row[1],
+                    "age": row[2],
+                    "travelStyle": row[3],
+                    "travelPriorities": row[4],
+                    "travelAvoidances": row[5],
+                    "dietaryRestrictions": row[6],
+                    "accomodations": row[7]
+                }
+            return respond
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f'Postgres: Could not select profile: {error}.')
+
+    # create a profile
+    def insert_profile(self, user_id, age,
+                       travelStyle, travelPriorities, travelAvoidances,
+                       dietaryRestrictions, accomodations):
+        try:
+            # create a new cursor, with statement will auto close the cursor
+            with self.conn.cursor() as cur:
+
+                # execute the INSERT statement
+                cur.execute(SQLcmd.insert_profiles_table,
+                            (user_id, age,
+                             travelStyle, travelPriorities, travelAvoidances,
+                             dietaryRestrictions, accomodations))
+
+                # commit the changes to the database
+                self.conn.commit()
+
+                # get the generated id back
+                rows = cur.fetchone()
+                if rows:
+                    profile_id = rows[0]
+
+                print("Postgres: New profile created.")
+
+                return profile_id
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f'Could not insert profile to the Database: {error}.')
+
+    # update a profile
+    def update_profile(self, age, travelStyle, travelPriorities,
+                       travelAvoidances, dietaryRestrictions,
+                       accomodations, user_id):
+        try:
+            # create a new cursor, with statement will auto close the cursor
+            with self.conn.cursor() as cur:
+
+                # execute the INSERT statement
+                cur.execute(SQLcmd.update_profiles_table,
+                            (age, travelStyle, travelPriorities,
+                             travelAvoidances, dietaryRestrictions,
+                             accomodations, user_id))
+
+                # commit the changes to the database
+                self.conn.commit()
+
+                # get the generated id back
+                rows = cur.fetchone()
+                if rows:
+                    profile_id = rows[0]
+
+                print("Postgres: New profile created.")
+
+                return profile_id
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f'Could not insert profile to the Database: {error}.')
