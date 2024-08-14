@@ -1,7 +1,7 @@
 # CS467 Online Capstone: GPT API Challenge
 # Kongkom Hiranpradit, Connor Flattum, Nathan Swaim, Noah Zajicek
 
-from promptType.promptType import PromptType
+from service.promptType.promptType import PromptType
 from client.client import Client
 
 # The initial prompt context message for chatGPT to know how to answer
@@ -13,7 +13,6 @@ PROMPT_ITINERARY = """You are a professional vacation planner helping users
                     by the user. You will present the result in a format of
                     detailed itinerary of each day, begin from day 1 to the
                     last day."""
-
 
 
 ITINERARY_JSON = {
@@ -172,7 +171,6 @@ class Prompt():
 
         return self.messageConstructor(cleanString(PROMPT_WEATHER),
                                        cleanString(forcastMessage))
-
 
     # Constructs the initial plan a trip message
     def respondToTripChat(self, travel_preferences):
