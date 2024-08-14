@@ -172,7 +172,6 @@ class Prompt():
         return self.messageConstructor(cleanString(PROMPT_WEATHER),
                                        cleanString(forcastMessage))
 
-
     # Constructs the initial plan a trip message
     def respondToTripChat(self, travel_preferences):
 

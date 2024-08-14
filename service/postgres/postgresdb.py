@@ -68,6 +68,7 @@ class PostgresDB():
     # create a new trip to trips table
     def create_trip_to_db(self, destination, days_num, travelers_num, budget,
                           travel_preferences, user_id=None):
+        # print(user_id)
         try:
             # create a new cursor, with statement will auto close the cursor
             with self.conn.cursor() as cur:

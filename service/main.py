@@ -102,9 +102,8 @@ def initialRequest():
     # Database work (no need for try blocks, they are already in postgresdb.py)
     # create a PostgresDB() object, this automatically connects to PostgresDB
     postgressconn = PostgresDB()
-    
-    travel_preferences.join(profileString(user_id))
 
+    travel_preferences.join(profileString(user_id))
 
     # messages is an array of 'message' objects
     # a 'message' objects is a dictionary of "role" and "content"
@@ -640,6 +639,74 @@ def updateTripPlanningPrompt():
 
     return ({"gpt-message": completion.choices[0].message.content,
              "destination": destination}, 200)
+
+###########################################################
+#
+#  8. Travel Recommendations
+#
+#  Receives: {trip_id: trip_id, content: content|Itinerary|event}
+#
+#  Returns: { "Event 1":{ "recommendation": "Some recommendation text"},
+#           "Event 2": {"recommendation": "Another recommendation text"},...}
+#
+#
+###########################################################
+@app.route('/v1/prompt/get-travel-recommendation', methods=['POST'])
+def getTravelRecommendationPrompt():
+    # get json body from POST request
+    content = request.get_json()
+    trip_id = content['trip_id']
+    event = content['content']['itinerary']['event']
+
+    # check that the request body is valid
+    if ('content' not in content or 'trip_id' not in content):
+        return (ERROR_MESSAGE_400, 400)
+
+    # read chat history from database using trip_id
+    # Database work (no need for try blocks, they are already in postgresdb.py)
+    # create a PostgresDB() object, this automatically connects to PostgresDB
+    postgressconn = PostgresDB()
+
+    # read all messages with trip_id from 'message' table in database
+    # returns an array of message objects
+    messages = postgressconn.get_chat_history(trip_id)
+    print("User event: retrieved chat history from database")
+
+    # Create payload response to send to ChatGPT API
+    payload = '. Provide 8 different event recommendations instead. Each recommendation is a maximum of 2 sentences. output should be like: { "Event 1": { "recommendation": "Some recommendation text"},"Event 2": {"recommendation": "Another recommendation text"},...}'
+    
+    try:
+        p = prompt.Prompt()
+        user_message = {
+            "role": "user",
+            "content": [{
+                "type": "text",
+                "text": event + payload
+            }]
+        }
+        messages.append(user_message)
+        completion = p.prompt(promptType.PromptType.ChatCompletions, messages)
+
+    except TypeError:
+        return {
+            "svc": "prompt-svc",
+            "error": "Invalid type: please use 1) chat,\
+                2) embedded, or 3) image",
+            "messages": event,
+        }
+
+    # check that the request body is valid
+    if ('error' in completion):
+        return {
+            "svc": "prompt-svc",
+            "error": completion['error'],
+            "messages": event,
+        }
+
+    # close postgres DB connection
+    postgressconn.close_db_connection()
+
+    return ({"messages": completion.choices[0].message.content}, 200)
 
 
 @app.route('/v1/prompt/profile', methods=['GET'])
